@@ -1,0 +1,80 @@
+name: Verify and deploy hug generator
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: hugging-eomjis-suck-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+      - run: |
+          npm ci
+          npm --prefix frontend ci
+      - run: |
+          npm audit --omit=dev --audit-level=high
+          npm --prefix frontend audit --omit=dev --audit-level=high
+          npm run frontend:build
+      - name: Browser acceptance
+        run: |
+          npx --prefix frontend playwright install --with-deps chromium
+          npm run frontend:test
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+      - run: |
+          npm ci
+          npm --prefix frontend ci
+          npm install --global @p2ppsr/cars-cli@latest
+          npm run frontend:build
+          cars build Babbage
+      - name: Check CARS and publish
+        env:
+          CARS_PRIVATE_KEY: ${{ secrets.CARS_PRIVATE_KEY }}
+          CARS_WALLET_STORAGE: ${{ secrets.CARS_WALLET_STORAGE }}
+        run: |
+          set -euo pipefail
+          test -n "${CARS_PRIVATE_KEY:-}"
+          storage_args=()
+          if [ -n "${CARS_WALLET_STORAGE:-}" ]; then storage_args=(--storage "$CARS_WALLET_STORAGE"); fi
+          cars doctor Babbage --key "$CARS_PRIVATE_KEY" --network mainnet "${storage_args[@]}"
+          cars project ensure-balance Babbage --key "$CARS_PRIVATE_KEY" --network mainnet "${storage_args[@]}" --min 1 --topup-to 250000
+          for attempt in 1 2 3; do
+            log="cars-release-attempt-${attempt}.log"
+            set +e
+            cars release now Babbage --key "$CARS_PRIVATE_KEY" --network mainnet "${storage_args[@]}" 2>&1 | tee "$log"
+            status=${PIPESTATUS[0]}
+            set -e
+            if [ "$status" -eq 0 ] && grep -q CARS_RELEASE_SUCCESS "$log"; then exit 0; fi
+            if [ "$attempt" -eq 3 ]; then exit "${status:-1}"; fi
+            sleep "$((attempt * 20))"
+          done

@@ -1,0 +1,12 @@
+{
+  "name": "hugging-eomjis-suck-cars",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "frontend:build": "npm --prefix frontend run build",
+    "frontend:test": "npm --prefix frontend test"
+  },
+  "devDependencies": {
+    "@p2ppsr/cars-cli": "^1.2.32"
+  }
+}
