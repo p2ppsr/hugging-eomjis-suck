@@ -1,21 +1,8 @@
 import './style.css';
 import { createHugSvg, GENDERS, TONES } from './illustration.js';
+import { defaults, parseHug, hugQuery } from './hug-state.js';
 
-const defaults = [
-  { gender: 'Woman', tone: 0 },
-  { gender: 'Man', tone: 2 },
-  { gender: 'Person', tone: 4 },
-  { gender: 'Woman', tone: 1 },
-];
-const params = new URLSearchParams(location.search);
-const parsedCount = Number(params.get('n'));
-const count = Number.isInteger(parsedCount) && parsedCount >= 1 && parsedCount <= 4 ? parsedCount : 2;
-let people = Array.from({ length: count }, (_, index) => {
-  const code = params.get(`p${index + 1}`);
-  const gender = code ? GENDERS[Number(code[0])] : defaults[index].gender;
-  const tone = code ? Number(code.slice(1)) : defaults[index].tone;
-  return { gender: GENDERS.includes(gender) ? gender : defaults[index].gender, tone: Number.isInteger(tone) && tone >= 0 && tone < TONES.length ? tone : defaults[index].tone };
-});
+let people = parseHug(location.search);
 
 const app = document.querySelector('#app');
 app.innerHTML = `<div class="site-shell">
@@ -26,7 +13,7 @@ app.innerHTML = `<div class="site-shell">
       <section class="preview-panel" aria-label="Generated hug"><div class="preview-header"><span>YOUR HUG, LIVE</span><span class="live-pill"><span class="live-dot"></span> MADE IN YOUR BROWSER</span></div><div class="preview-art" id="previewArt" aria-live="polite"></div><div class="preview-bottom"><div><span class="mini-label">CURRENT CONFIGURATION</span><strong id="summary"></strong></div><span class="scribble" aria-hidden="true">♡</span></div></section>
       <section class="builder-panel" aria-label="Build your hug"><div class="builder-head"><div><span class="mini-label">THE HUG BUILDER</span><h2>Who’s in?</h2></div><span class="step-pill">01—04</span></div><div class="count-block"><label for="count">People in the hug</label><div class="count-control"><button type="button" id="decrease" aria-label="Remove one person">−</button><output id="countValue" for="count"></output><button type="button" id="increase" aria-label="Add one person">+</button></div></div><div id="personControls" class="person-list"></div><div class="builder-actions"><button type="button" class="surprise-btn" id="surprise"><span aria-hidden="true">✦</span> Surprise me</button><button type="button" class="reset-btn" id="reset">Reset</button></div></section>
     </div>
-    <section class="export-strip"><div><span class="mini-label">LOOKS GOOD? TAKE IT.</span><h2>Send some love.</h2><p>Your choices stay in this browser. The link remembers them.</p></div><div class="export-actions"><button type="button" class="action dark" id="downloadPng">↓ Download PNG</button><button type="button" class="action pale" id="downloadSvg">↓ Download SVG</button><button type="button" class="action pale" id="copyLink">↗ Copy link</button></div></section>
+    <section class="export-strip"><div><span class="mini-label">LOOKS GOOD? TAKE IT.</span><h2>Send some love.</h2><p>Your choices stay in this browser. The link remembers them.</p></div><div class="export-actions"><button type="button" class="action dark" id="shareHug">↗ Share this hug</button><button type="button" class="action pale" id="downloadPng">↓ Download PNG</button><button type="button" class="action pale" id="downloadSvg">↓ Download SVG</button><button type="button" class="action pale" id="copyLink">↗ Copy link</button></div></section>
     <footer><span>MADE FOR ALL THE PEOPLE IN THE HUG.</span><span>NO ACCOUNTS. NO UPLOADS. JUST ARMS.</span></footer>
   </main><div class="toast" id="toast" role="status" aria-live="polite"></div>
 </div>`;
@@ -41,9 +28,7 @@ function say(message) {
   toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
 }
 function writeUrl() {
-  const query = new URLSearchParams({ n: String(people.length) });
-  people.forEach((person, index) => query.set(`p${index + 1}`, `${GENDERS.indexOf(person.gender)}${person.tone}`));
-  history.replaceState(null, '', `${location.pathname}?${query}`);
+  history.replaceState(null, '', `${location.pathname}?${hugQuery(people)}`);
 }
 function render() {
   document.querySelector('#countValue').textContent = people.length;
@@ -98,5 +83,16 @@ document.querySelector('#downloadPng').addEventListener('click', async () => {
 document.querySelector('#copyLink').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(location.href); say('Link copied. Share the hug!'); }
   catch { say('Clipboard unavailable. Copy the URL from your address bar.'); }
+});
+document.querySelector('#shareHug').addEventListener('click', async () => {
+  const title = people.length === 1 ? 'I made myself a hug' : `I made a ${people.length}-person hug`;
+  const data = { title, text: 'This hug has your name on it. Make your own:', url: location.href };
+  if (navigator.share) {
+    try { await navigator.share(data); say('Hug sent into the world.'); }
+    catch (error) { if (error.name !== 'AbortError') say('Could not share. Try copying the link.'); }
+  } else {
+    try { await navigator.clipboard.writeText(location.href); say('Link copied. Send someone a hug!'); }
+    catch { say('Copy the URL from your address bar to share.'); }
+  }
 });
 render();

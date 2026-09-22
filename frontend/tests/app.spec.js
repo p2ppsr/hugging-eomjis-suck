@@ -32,3 +32,16 @@ test('exports SVG and remains usable on a phone', async ({ page }) => {
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('my-hug-2-people.svg');
 });
+
+test('shares the exact current hug URL through the native share sheet', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.sharedHug = null;
+    navigator.share = async data => { window.sharedHug = data; };
+  });
+  await page.goto('/?n=1&p1=25');
+  await page.getByRole('button', { name: 'Share this hug' }).click();
+  expect(await page.evaluate(() => window.sharedHug)).toMatchObject({
+    title: 'I made myself a hug',
+    url: 'http://127.0.0.1:4173/?n=1&p1=25',
+  });
+});

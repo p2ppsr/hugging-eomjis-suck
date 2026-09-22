@@ -1,0 +1,6 @@
+.git
+**/node_modules
+frontend/build
+frontend/test-results
+frontend/playwright-report
+cars_artifact_*.tgz

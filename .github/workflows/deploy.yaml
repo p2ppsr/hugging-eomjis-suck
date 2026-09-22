@@ -12,6 +12,7 @@ concurrency:
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
   verify:
@@ -25,13 +26,17 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             frontend/package-lock.json
+            backend/package-lock.json
       - run: |
           npm ci
           npm --prefix frontend ci
+          npm --prefix backend ci
       - run: |
           npm audit --omit=dev --audit-level=high
           npm --prefix frontend audit --omit=dev --audit-level=high
+          npm --prefix backend audit --omit=dev --audit-level=high
           npm run frontend:build
+          npm --prefix backend test
       - name: Browser acceptance
         run: |
           npx --prefix frontend playwright install --with-deps chromium
@@ -51,6 +56,7 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             frontend/package-lock.json
+            backend/package-lock.json
       - run: |
           npm ci
           npm --prefix frontend ci
@@ -78,3 +84,24 @@ jobs:
             if [ "$attempt" -eq 3 ]; then exit "${status:-1}"; fi
             sleep "$((attempt * 20))"
           done
+
+  preview-image:
+    if: github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/p2ppsr/hugging-eomjis-suck-preview:${{ github.sha }}
+            ghcr.io/p2ppsr/hugging-eomjis-suck-preview:master

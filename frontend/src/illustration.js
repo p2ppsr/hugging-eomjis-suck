@@ -63,10 +63,10 @@ function body(p, i) {
     <path d="M-30 17 Q-29 51-34 77" fill="none" stroke="#fff" stroke-width="4" opacity=".16" stroke-linecap="round"/>
     <path d="M-35 80 Q0 87 35 80" fill="none" stroke="${o.shade}" stroke-width="3" opacity=".55"/></g>`;
 }
-function backArms(i, count) {
+function backArms(people, i, count) {
   if (count === 1) return '';
   const target = count === 2 ? 72 : count === 3 ? 62 : 52;
-  const t = TONES[currentPeople[i].tone];
+  const t = TONES[people[i].tone];
   return `<g fill="none" stroke-linecap="round" stroke-linejoin="round">
     <path d="M-37 0 Q-64 14-70 42 Q-72 65-45 74 L${target} 79" stroke="${t.shade}" stroke-width="18" opacity=".28"/>
     <path d="M-37 0 Q-64 14-70 42 Q-72 65-45 74 L${target} 79" stroke="url(#skin${i})" stroke-width="15"/>
@@ -74,9 +74,8 @@ function backArms(i, count) {
     <path d="M38 0 Q63 13 67 44 Q69 66 43 76 L-${target} 78" stroke="url(#skin${i})" stroke-width="15"/>
   </g>`;
 }
-let currentPeople = [];
-function frontArms(i, count) {
-  const t = TONES[currentPeople[i].tone];
+function frontArms(people, i, count) {
+  const t = TONES[people[i].tone];
   if (count === 1) return `<g fill="none" stroke-linecap="round" stroke-linejoin="round">
     <path d="M-38 5 Q-63 24-53 50 Q-39 70 18 45" stroke="${t.shade}" stroke-width="22" opacity=".35"/>
     <path d="M-38 5 Q-63 24-53 50 Q-39 70 18 45" stroke="url(#skin${i})" stroke-width="19"/>
@@ -92,7 +91,6 @@ function frontArms(i, count) {
   </g>`;
 }
 export function createHugSvg(people, { transparent = false } = {}) {
-  currentPeople = people;
   const count = people.length;
   const gap = count === 1 ? 0 : count === 2 ? 92 : count === 3 ? 88 : 82;
   const scale = count === 4 ? .88 : count === 3 ? .96 : 1.1;
@@ -103,9 +101,9 @@ export function createHugSvg(people, { transparent = false } = {}) {
     <title>${esc(label)}</title>${defs(people)}
     ${transparent ? '' : '<rect width="900" height="560" rx="30" fill="url(#backdrop)"/>'}
     <ellipse cx="450" cy="510" rx="${count === 1 ? 100 : count === 2 ? 165 : count === 3 ? 205 : 235}" ry="17" fill="#896647" opacity=".16" filter="url(#shadow)"/>
-    ${people.map((_, i) => `<g transform="${transforms[i]}">${backArms(i, count)}</g>`).join('')}
+    ${people.map((_, i) => `<g transform="${transforms[i]}">${backArms(people, i, count)}</g>`).join('')}
     ${people.map((p, i) => `<g transform="${transforms[i]}">${body(p, i)}</g>`).join('')}
     ${people.map((p, i) => `<g transform="${transforms[i]}">${head(p, i)}</g>`).join('')}
-    ${people.map((_, i) => `<g transform="${transforms[i]}">${frontArms(i, count)}</g>`).join('')}
+    ${people.map((_, i) => `<g transform="${transforms[i]}">${frontArms(people, i, count)}</g>`).join('')}
   </svg>`;
 }
