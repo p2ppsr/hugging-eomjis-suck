@@ -112,6 +112,7 @@ export function createServer() {
         response.writeHead(405, responseHeaders({ allow: 'GET, HEAD' })).end(); return;
       }
       if (url.pathname === '/healthz') {
+        await getShell();
         response.writeHead(200, responseHeaders({ 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' })).end('ok'); return;
       }
       if (url.pathname !== '/' && url.pathname !== '/og.png') {
