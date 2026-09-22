@@ -13,7 +13,7 @@ let shellFetchedAt = 0;
 const imageCache = new Map();
 
 async function getShell() {
-  if (shell && Date.now() - shellFetchedAt < 30_000) return shell;
+  if (shell && Date.now() - shellFetchedAt < 2_000) return shell;
   try {
     const response = await fetch(upstream, { signal: AbortSignal.timeout(4000), headers: { accept: 'text/html' } });
     if (!response.ok) throw new Error(`upstream ${response.status}`);
