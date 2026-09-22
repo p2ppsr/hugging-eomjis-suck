@@ -2,7 +2,7 @@
   "schema": "bsv-app",
   "schemaVersion": "1.0",
   "frontend": {
-    "language": "javascript",
+    "language": "react",
     "sourceDirectory": "./frontend"
   },
   "configs": [
