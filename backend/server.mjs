@@ -2,7 +2,7 @@ import http from 'node:http';
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { Resvg } from '@resvg/resvg-js';
-import { createHugSvg, TONES } from '../frontend/src/illustration.js';
+import { createHugSvg, TONES, ILLUSTRATION_VERSION } from '../frontend/src/illustration.js';
 import { hugDescription, hugQuery, parseHug } from '../frontend/src/hug-state.js';
 
 const origin = 'https://hugging-eomjis-suck.metanet.app';
@@ -45,7 +45,7 @@ function metadata(people) {
   const description = hugDescription(people);
   const canonical = `${origin}/`;
   const shareUrl = `${origin}/?${hugQuery(people)}`;
-  const imageUrl = `${origin}/og.png?${hugQuery(people)}&v=1`;
+  const imageUrl = `${origin}/og.png?${hugQuery(people)}&v=${ILLUSTRATION_VERSION}`;
   const participants = people.map((person, index) => `person ${index + 1}: ${TONES[person.tone].name.toLowerCase()} ${person.gender.toLowerCase()}`).join('; ');
   const alt = count === 1 ? `Illustration of one person hugging themself (${participants})` : `Illustration of ${count} people hugging (${participants})`;
   return { title, description, canonical, shareUrl, imageUrl, alt };
@@ -124,7 +124,7 @@ export function createServer() {
       const people = parseHug(url.search);
       if (url.pathname === '/og.png') {
         const key = hugQuery(people);
-        const etag = `"${createHash('sha256').update('preview-v1:' + key).digest('hex')}"`;
+        const etag = `"${createHash('sha256').update(`preview-v${ILLUSTRATION_VERSION}:` + key).digest('hex')}"`;
         if (request.headers['if-none-match'] === etag) {
           response.writeHead(304, responseHeaders({ etag, 'cache-control': 'public, max-age=86400, stale-while-revalidate=604800' })).end(); return;
         }

@@ -45,3 +45,36 @@ test('shares the exact current hug URL through the native share sheet', async ({
     url: 'http://127.0.0.1:4173/?n=1&p1=25',
   });
 });
+
+for (const count of [1, 2, 3, 4]) {
+  test(`renders a downloadable PNG for ${count} ${count === 1 ? 'person' : 'people'}`, async ({ page }) => {
+    await page.goto(`/?n=${count}&p1=25&p2=01&p3=14&p4=00`);
+    const pending = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Download PNG' }).click();
+    const download = await pending;
+    expect(download.suggestedFilename()).toBe(`my-hug-${count}-people.png`);
+    const stream = await download.createReadStream();
+    const chunks = [];
+    for await (const chunk of stream) chunks.push(chunk);
+    const bytes = Buffer.concat(chunks);
+    expect(bytes.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    expect(bytes.readUInt32BE(16)).toBe(1800);
+    expect(bytes.readUInt32BE(20)).toBe(1120);
+    const hasPeople = await page.evaluate(async base64 => {
+      const img = new Image();
+      img.src = `data:image/png;base64,${base64}`;
+      await img.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width; canvas.height = img.height;
+      const context = canvas.getContext('2d');
+      context.drawImage(img, 0, 0);
+      const pixels = context.getImageData(500, 200, 800, 800).data;
+      let darkPixels = 0;
+      for (let offset = 0; offset < pixels.length; offset += 4) {
+        if (pixels[offset] < 120 && pixels[offset + 1] < 120 && pixels[offset + 2] < 120 && pixels[offset + 3] > 200) darkPixels++;
+      }
+      return darkPixels > 1000;
+    }, bytes.toString('base64'));
+    expect(hasPeople, 'PNG contains the figures, not only the background').toBe(true);
+  });
+}

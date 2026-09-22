@@ -15,6 +15,12 @@ npm run frontend:build
 
 The editor and exports run in the browser. A compact configuration is stored in the page URL so a hug can be shared. The preview service serves server-rendered HTML metadata and a 1200 × 630 PNG of that same hug to link unfurlers. It has no accounts, analytics, uploads, or persistent user data.
 
+## Illustration changes
+
+`frontend/src/illustration.js` supplies the editor, SVG/PNG exports, server-rendered page, and social card. Each figure has two arms, with shoulders and hands positioned from the same torso pose. Self hugs cross the chest; outer group members hold a neighbour in front and behind, and middle members put an arm around each neighbour's shoulders. Check all four group sizes, all presentations and skin tones, and small emoji-size output when changing the geometry.
+
+Increment `ILLUSTRATION_VERSION` when the artwork changes. The preview service uses it for both the Open Graph image URL and ETag, so earlier images can be refreshed. Deploy the frontend and preview service from the same source revision.
+
 ## Deployment
 
 Pushes to `master` run browser and preview tests, deploy the static editor through CARS, and verify a Linux/amd64 preview image build. Network Ops builds the production preview image on an amd64 cluster node and pins it in the Evans registry. Network Ops owns the two-replica preview Deployment and exact-path Gateway API routes for `/` and `/og.png`. All other assets continue to come from CARS. The preview service obtains the current Vite HTML shell from the CARS frontend Service and inserts the selected hug and metadata. Production is `https://hugging-eomjis-suck.metanet.app/`.

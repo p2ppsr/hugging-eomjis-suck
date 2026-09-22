@@ -7,6 +7,7 @@ export const TONES = [
   { name: 'Dark', base: '#54372b', light: '#795441', shade: '#2c1b17' },
 ];
 export const GENDERS = ['Woman', 'Man', 'Person'];
+export const ILLUSTRATION_VERSION = 2;
 const OUTFITS = [
   { base: '#618bc8', light: '#9dbbe4', shade: '#385f9f', lower: '#2e649d' },
   { base: '#d96f6d', light: '#f5a09d', shade: '#a74748', lower: '#8e6763' },
@@ -38,72 +39,116 @@ function hairFront(p, i) {
   return `<path d="M-46-85 Q-49-127 0-132 Q46-128 44-87 Q28-94 16-110 Q2-93-15-96 Q-26-88-46-85Z" fill="url(#hair${i})" stroke="#3f3027" stroke-width="2"/><path d="M-31-113 Q-7-129 15-117" fill="none" stroke="#a17e5f" stroke-width="4" opacity=".34"/>`;
 }
 function head(p, i) {
-  return `<g>${hairBack(p, i)}
+  const features = p.tone >= 4 ? '#211510' : '#362b26';
+  return `<g>
     <ellipse cx="-42" cy="-74" rx="9" ry="14" fill="url(#skin${i})" stroke="${TONES[p.tone].shade}" stroke-width="1.5"/>
     <ellipse cx="42" cy="-74" rx="9" ry="14" fill="url(#skin${i})" stroke="${TONES[p.tone].shade}" stroke-width="1.5"/>
     <path d="M-42-88 C-42-117-24-126 0-126 C29-126 42-109 42-83 L39-55 Q30-25 0-22 Q-31-25-40-54Z" fill="url(#skin${i})" stroke="${TONES[p.tone].shade}" stroke-width="1.6"/>
     <path d="M-25-76 Q-19-81-11-76 M11-76 Q19-81 25-76" fill="none" stroke="#503729" stroke-width="2.7" stroke-linecap="round" opacity=".7"/>
-    <ellipse cx="-17" cy="-68" rx="3.7" ry="4.9" fill="#362b26"/><ellipse cx="17" cy="-68" rx="3.7" ry="4.9" fill="#362b26"/>
-    <circle cx="-18" cy="-70" r="1.2" fill="#fff"/><circle cx="16" cy="-70" r="1.2" fill="#fff"/>
+    <path d="M-24-65 Q-18-73-11-66 M11-66 Q18-73 24-65" fill="none" stroke="${features}" stroke-width="3.4" stroke-linecap="round"/>
     <path d="M0-61 Q-4-53 1-52" fill="none" stroke="${TONES[p.tone].shade}" stroke-width="2" stroke-linecap="round" opacity=".6"/>
-    <path d="M-10-42 Q0-34 10-42" fill="none" stroke="#793c3b" stroke-width="2.8" stroke-linecap="round"/>
+    <path d="M-10-42 Q0-34 10-42" fill="none" stroke="${p.tone >= 4 ? features : '#793c3b'}" stroke-width="2.8" stroke-linecap="round"/>
     <ellipse cx="-29" cy="-50" rx="8" ry="4" fill="#e47872" opacity=".16"/><ellipse cx="29" cy="-50" rx="8" ry="4" fill="#e47872" opacity=".16"/>
     ${hairFront(p, i)}</g>`;
 }
-function body(p, i) {
+function lowerBody(p, i) {
   const o = OUTFITS[i];
   const lower = p.gender === 'Woman'
     ? `<path d="M-34 80 L-46 154 Q0 165 46 154 L34 80Z" fill="${o.lower}" stroke="#3a4d65" stroke-width="1.5"/>`
     : `<path d="M-32 80 L-35 156 L-4 156 L0 105 L4 156 L35 156 L32 80Z" fill="${o.lower}" stroke="#59616b" stroke-width="1.5"/>`;
   return `<g>${lower}
     <path d="M-34 151 L-32 214 Q-31 225-24 225 L-10 225 Q-6 219-10 211 L-12 153 M12 153 L10 211 Q6 220 11 225 L26 225 Q32 224 33 214 L34 151" fill="url(#skin${i})" stroke="${TONES[p.tone].shade}" stroke-width="2"/>
-    <ellipse cx="-20" cy="224" rx="19" ry="8" fill="#513e38"/><ellipse cx="20" cy="224" rx="19" ry="8" fill="#513e38"/>
+    <ellipse cx="-20" cy="224" rx="19" ry="8" fill="#513e38"/><ellipse cx="20" cy="224" rx="19" ry="8" fill="#513e38"/></g>`;
+}
+function torso(p, i) {
+  const o = OUTFITS[i];
+  return `<g>
+    <path d="M-13-32 L-13-12 Q0 0 13-12 L13-32Z" fill="url(#skin${i})"/>
     <path d="M-18-16 Q0-8 18-16 L36-15 Q48 12 39 81 Q0 90-39 81 Q-48 12-36-15Z" fill="url(#shirt${i})" stroke="${o.shade}" stroke-width="2.2"/>
     <path d="M-19-15 Q0 4 19-15" fill="none" stroke="${o.shade}" stroke-width="3"/>
     <path d="M-30 17 Q-29 51-34 77" fill="none" stroke="#fff" stroke-width="4" opacity=".16" stroke-linecap="round"/>
     <path d="M-35 80 Q0 87 35 80" fill="none" stroke="${o.shade}" stroke-width="3" opacity=".55"/></g>`;
 }
-function backArms(people, i, count) {
-  if (count === 1) return '';
-  const target = count === 2 ? 72 : count === 3 ? 62 : 52;
-  const t = TONES[people[i].tone];
+// Arms use the same shoulder transform as the torso. Each person has exactly
+// two: the outside figures hold a neighbour in front and behind; the middle
+// figures put one arm around each neighbour's shoulders.
+function joint(pose, x, y) {
+  const angle = pose.lean * Math.PI / 180;
+  return [pose.x + x * Math.cos(angle) - (y - 80) * Math.sin(angle),
+    80 + x * Math.sin(angle) + (y - 80) * Math.cos(angle)];
+}
+const xy = point => point.map(value => Number(value.toFixed(2))).join(' ');
+function arm(p, i, path) {
   return `<g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M-37 0 Q-64 14-70 42 Q-72 65-45 74 L${target} 79" stroke="${t.shade}" stroke-width="18" opacity=".28"/>
-    <path d="M-37 0 Q-64 14-70 42 Q-72 65-45 74 L${target} 79" stroke="url(#skin${i})" stroke-width="15"/>
-    <path d="M38 0 Q63 13 67 44 Q69 66 43 76 L-${target} 78" stroke="${t.shade}" stroke-width="18" opacity=".28"/>
-    <path d="M38 0 Q63 13 67 44 Q69 66 43 76 L-${target} 78" stroke="url(#skin${i})" stroke-width="15"/>
+    <path d="${path}" stroke="${TONES[p.tone].shade}" stroke-width="21" opacity=".35"/>
+    <path d="${path}" stroke="url(#skin${i})" stroke-width="18"/>
   </g>`;
 }
-function frontArms(people, i, count) {
-  const t = TONES[people[i].tone];
-  if (count === 1) return `<g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M-38 5 Q-63 24-53 50 Q-39 70 18 45" stroke="${t.shade}" stroke-width="22" opacity=".35"/>
-    <path d="M-38 5 Q-63 24-53 50 Q-39 70 18 45" stroke="url(#skin${i})" stroke-width="19"/>
-    <path d="M38 5 Q61 22 54 50 Q40 71-22 45" stroke="${t.shade}" stroke-width="22" opacity=".35"/>
-    <path d="M38 5 Q61 22 54 50 Q40 71-22 45" stroke="url(#skin${i})" stroke-width="19"/>
-    <ellipse cx="19" cy="45" rx="10" ry="8" fill="url(#skin${i})"/><ellipse cx="-23" cy="45" rx="10" ry="8" fill="url(#skin${i})"/>
+function hand(p, i, position, angle) {
+  return `<g transform="translate(${xy(position)}) rotate(${angle})">
+    <path d="M-10-5 Q-6-9-1-7 L7-5 Q12-3 10 2 Q9 6 4 7 L-5 6 Q-10 4-10-1Z" fill="url(#skin${i})" stroke="${TONES[p.tone].shade}" stroke-width="1"/>
+    <path d="M3-3 L7-1 M2 1 L6 3" fill="none" stroke="${TONES[p.tone].shade}" stroke-width="1" stroke-linecap="round" opacity=".5"/>
   </g>`;
-  const left = i > 0, right = i < count - 1;
-  const reach = count === 2 ? 77 : count === 3 ? 65 : 54;
-  return `<g fill="none" stroke-linecap="round" stroke-linejoin="round">
-  ${right ? `<path d="M36 3 Q58 8 64 34 Q75 58 ${reach} 63 L${reach + 31} 57" stroke="${t.shade}" stroke-width="22" opacity=".35"/><path d="M36 3 Q58 8 64 34 Q75 58 ${reach} 63 L${reach + 31} 57" stroke="url(#skin${i})" stroke-width="18"/><ellipse cx="${reach + 31}" cy="57" rx="12" ry="8" fill="url(#skin${i})"/>` : ''}
-  ${left ? `<path d="M-36 3 Q-58 8-64 34 Q-75 58-${reach} 63 L-${reach + 31} 57" stroke="${t.shade}" stroke-width="22" opacity=".35"/><path d="M-36 3 Q-58 8-64 34 Q-75 58-${reach} 63 L-${reach + 31} 57" stroke="url(#skin${i})" stroke-width="18"/><ellipse cx="-${reach + 31}" cy="57" rx="12" ry="8" fill="url(#skin${i})"/>` : ''}
-  </g>`;
+}
+function hugArms(people, poses) {
+  const back = [], front = [], shoulderHands = [];
+  const count = people.length;
+  people.forEach((p, i) => {
+    const pose = poses[i];
+    if (count === 1) {
+      // Offset the two forearms so the wrists stay legible at emoji size.
+      [-1, 1].forEach(side => {
+        const start = joint(pose, side * 36, 4);
+        const elbow = joint(pose, side * 27, side < 0 ? 58 : 71);
+        const wrist = joint(pose, -side * 31, side < 0 ? 18 : 33);
+        const bend = joint(pose, side * 46, 41);
+        const path = `M${xy(start)} Q${xy(bend)} ${xy(elbow)} Q${xy(joint(pose, -side * 3, 49))} ${xy(wrist)}`;
+        front.push(arm(p, i, path) + hand(p, i, wrist, side < 0 ? -35 : -145));
+      });
+      return;
+    }
+    [-1, 1].forEach(side => {
+      const neighbour = poses[i + side];
+      const start = joint(pose, side * 36, 3);
+      if (neighbour) {
+        const wrist = joint(neighbour, side * 40, 5);
+        const bend = [(start[0] + wrist[0]) / 2, Math.min(start[1], wrist[1]) - 26];
+        back.push(arm(p, i, `M${xy(start)} Q${xy(bend)} ${xy(wrist)}`));
+        shoulderHands.push(hand(p, i, wrist, side > 0 ? 70 : 110));
+      } else {
+        const partner = poses[i - side];
+        const elbow = joint(pose, side * 5, side < 0 ? 55 : 70);
+        const bend = joint(pose, side * 27, 37);
+        const wrist = joint(partner, side * 33, side < 0 ? 27 : 48);
+        const path = `M${xy(start)} Q${xy(bend)} ${xy(elbow)} Q${xy([(elbow[0] + wrist[0]) / 2, elbow[1] + 2])} ${xy(wrist)}`;
+        const angle = Math.atan2(wrist[1] - elbow[1], wrist[0] - elbow[0]) * 180 / Math.PI;
+        front.push(arm(p, i, path) + hand(p, i, wrist, angle));
+      }
+    });
+  });
+  return { back: back.join(''), front: front.join(''), shoulderHands: shoulderHands.join('') };
 }
 export function createHugSvg(people, { transparent = false } = {}) {
   const count = people.length;
-  const gap = count === 1 ? 0 : count === 2 ? 92 : count === 3 ? 88 : 82;
+  const gap = count === 4 ? 100 : 96;
   const scale = count === 4 ? .88 : count === 3 ? .96 : 1.1;
-  const start = 450 - gap * (count - 1) / 2;
-  const transforms = people.map((_, i) => `translate(${start + gap * i} 248) scale(${scale})`);
+  const poses = people.map((_, i) => ({
+    x: (i - (count - 1) / 2) * gap,
+    lean: count === 1 ? 0 : 3 * (1 - 2 * i / (count - 1)),
+  }));
+  const upper = pose => `translate(${pose.x} 0) rotate(${pose.lean} 0 80)`;
+  const arms = hugArms(people, poses);
   const label = count === 1 ? 'One person giving themselves a hug' : `${count} people hugging`;
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="900" height="560" viewBox="0 0 900 560" role="img" aria-label="${esc(label)}">
     <title>${esc(label)}</title>${defs(people)}
     ${transparent ? '' : '<rect width="900" height="560" rx="30" fill="url(#backdrop)"/>'}
-    <ellipse cx="450" cy="510" rx="${count === 1 ? 100 : count === 2 ? 165 : count === 3 ? 205 : 235}" ry="17" fill="#896647" opacity=".16" filter="url(#shadow)"/>
-    ${people.map((_, i) => `<g transform="${transforms[i]}">${backArms(people, i, count)}</g>`).join('')}
-    ${people.map((p, i) => `<g transform="${transforms[i]}">${body(p, i)}</g>`).join('')}
-    ${people.map((p, i) => `<g transform="${transforms[i]}">${head(p, i)}</g>`).join('')}
-    ${people.map((_, i) => `<g transform="${transforms[i]}">${frontArms(people, i, count)}</g>`).join('')}
+    <ellipse cx="450" cy="503" rx="${(gap * (count - 1) / 2 + 48) * scale}" ry="12" fill="#896647" opacity=".18" filter="url(#shadow)"/>
+    <g transform="translate(450 ${500 - 232 * scale}) scale(${scale})">
+      ${arms.back}
+      ${people.map((p, i) => `<g transform="translate(${poses[i].x} 0)">${lowerBody(p, i)}</g>`).join('')}
+      ${people.map((p, i) => `<g transform="${upper(poses[i])}">${hairBack(p, i)}${torso(p, i)}</g>`).join('')}
+      ${arms.front}${arms.shoulderHands}
+      ${people.map((p, i) => `<g transform="${upper(poses[i])}"><g transform="rotate(${count === 1 ? 5 : poses[i].lean} 0 -40)">${head(p, i)}</g></g>`).join('')}
+    </g>
   </svg>`;
 }
