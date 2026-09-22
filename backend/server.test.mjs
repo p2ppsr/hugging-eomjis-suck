@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
+import { gunzipSync } from 'node:zlib';
 
 const upstream = http.createServer((_request, response) => response.writeHead(200, { 'content-type': 'text/html' }).end('<!doctype html><html><head><title>Generic</title><meta name="description" content="Generic" /></head><body><div id="app"></div><script type="module" src="/assets/app.js"></script></body></html>'));
 await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
@@ -48,4 +49,25 @@ test('normalizes malformed parameters and limits methods and paths', async () =>
   assert.equal((await fetch(`${base}/other`)).status, 404);
   assert.equal((await fetch(`${base}/`, { method: 'POST' })).status, 405);
   assert.equal((await fetch(`${base}/healthz`)).status, 200);
+});
+
+test('compresses HTML when accepted and respects gzip opt out', async () => {
+  async function raw(encoding) {
+    return await new Promise((resolve, reject) => {
+      http.get(`${base}/?n=1&p1=25`, { headers: { 'accept-encoding': encoding } }, response => {
+        const chunks = [];
+        response.on('data', chunk => chunks.push(chunk));
+        response.on('end', () => resolve({ headers: response.headers, body: Buffer.concat(chunks) }));
+        response.on('error', reject);
+      }).on('error', reject);
+    });
+  }
+  const zipped = await raw('br, gzip');
+  const plain = await raw('gzip;q=0');
+  assert.equal(zipped.headers['content-encoding'], 'gzip');
+  assert.match(zipped.headers.vary, /Accept-Encoding/);
+  assert.match(gunzipSync(zipped.body).toString(), /A self hug, made just right/);
+  assert.equal(plain.headers['content-encoding'], undefined);
+  assert.match(plain.body.toString(), /A self hug, made just right/);
+  assert.ok(zipped.body.length < plain.body.length / 2);
 });

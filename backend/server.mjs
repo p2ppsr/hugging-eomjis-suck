@@ -1,7 +1,8 @@
 import http from 'node:http';
 import { createHash } from 'node:crypto';
+import { gzipSync } from 'node:zlib';
 import { Resvg } from '@resvg/resvg-js';
-import { createHugSvg } from '../frontend/src/illustration.js';
+import { createHugSvg, TONES } from '../frontend/src/illustration.js';
 import { hugDescription, hugQuery, parseHug } from '../frontend/src/hug-state.js';
 
 const origin = 'https://hugging-eomjis-suck.metanet.app';
@@ -45,7 +46,8 @@ function metadata(people) {
   const canonical = `${origin}/`;
   const shareUrl = `${origin}/?${hugQuery(people)}`;
   const imageUrl = `${origin}/og.png?${hugQuery(people)}&v=1`;
-  const alt = count === 1 ? 'Illustration of one person hugging themself' : `Illustration of ${count} people hugging, each with their chosen presentation and skin tone`;
+  const participants = people.map((person, index) => `person ${index + 1}: ${TONES[person.tone].name.toLowerCase()} ${person.gender.toLowerCase()}`).join('; ');
+  const alt = count === 1 ? `Illustration of one person hugging themself (${participants})` : `Illustration of ${count} people hugging (${participants})`;
   return { title, description, canonical, shareUrl, imageUrl, alt };
 }
 
@@ -56,6 +58,7 @@ function renderHtml(source, people, isVariant) {
   <link rel="canonical" href="${m.canonical}" />
   <meta name="robots" content="${isVariant ? 'noindex,follow,max-image-preview:large' : 'index,follow,max-image-preview:large'}" />
   <meta property="og:type" content="website" />
+  <meta property="og:locale" content="en_US" />
   <meta property="og:site_name" content="Hugging Emojis Suck" />
   <meta property="og:title" content="${escapeHtml(m.title)} | Hugging Emojis Suck" />
   <meta property="og:description" content="${escapeHtml(m.description)}" />
@@ -136,7 +139,21 @@ export function createServer() {
       }
       const html = renderHtml(await getShell(), people, url.search !== '');
       const bytes = Buffer.from(html);
-      response.writeHead(200, responseHeaders({ 'content-type': 'text/html; charset=utf-8', 'content-length': bytes.length, 'cache-control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=300' })).end(request.method === 'HEAD' ? undefined : bytes);
+      const compressed = (request.headers['accept-encoding'] || '').split(',').some(entry => {
+        const [coding, ...parameters] = entry.trim().split(';');
+        if (coding.toLowerCase() !== 'gzip') return false;
+        const quality = parameters.map(value => value.trim()).find(value => value.startsWith('q='));
+        return !quality || Number(quality.slice(2)) > 0;
+      });
+      const payload = compressed ? gzipSync(bytes, { level: 6 }) : bytes;
+      response.writeHead(200, responseHeaders({
+        'content-type': 'text/html; charset=utf-8',
+        'content-language': 'en',
+        'content-length': payload.length,
+        'cache-control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=300',
+        vary: 'Accept-Encoding',
+        ...(compressed ? { 'content-encoding': 'gzip' } : {}),
+      })).end(request.method === 'HEAD' ? undefined : payload);
     } catch (error) {
       console.error('Preview response failed:', error);
       response.writeHead(503, responseHeaders({ 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' })).end('Temporarily unavailable');
