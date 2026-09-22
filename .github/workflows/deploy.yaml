@@ -12,7 +12,6 @@ concurrency:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   verify:
@@ -91,17 +90,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v6
         with:
           context: .
           file: backend/Dockerfile
           platforms: linux/amd64
-          push: true
-          tags: |
-            ghcr.io/p2ppsr/hugging-eomjis-suck-preview:${{ github.sha }}
-            ghcr.io/p2ppsr/hugging-eomjis-suck-preview:master
+          load: true
+          push: false
+          tags: hug-preview-ci:${{ github.sha }}
+      - name: Smoke test preview image
+        run: |
+          docker run --rm hug-preview-ci:${{ github.sha }} node --input-type=module -e "import('./backend/server.mjs').then(m => { if (m.renderCard([{ gender: 'Person', tone: 5 }]).length < 1000) process.exit(1) })"
