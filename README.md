@@ -15,4 +15,4 @@ The app has no backend, account, analytics, or uploaded data. A compact configur
 
 ## Deployment
 
-Pushes to `master` run browser tests, build the static frontend, and deploy it through CARS. Production is `https://hugging-eomjis-suck.metanet.app/`.
+Pushes to `master` run browser tests and build the static frontend. While the Evans storage recovery incident is active, CARS deployment is limited to an explicit workflow dispatch. The planned production URL is `https://hugging-eomjis-suck.metanet.app/`.
