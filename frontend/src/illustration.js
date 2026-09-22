@@ -7,7 +7,7 @@ export const TONES = [
   { name: 'Dark', base: '#54372b', light: '#795441', shade: '#2c1b17' },
 ];
 export const GENDERS = ['Woman', 'Man', 'Person'];
-export const ILLUSTRATION_VERSION = 2;
+export const ILLUSTRATION_VERSION = 3;
 const OUTFITS = [
   { base: '#618bc8', light: '#9dbbe4', shade: '#385f9f', lower: '#2e649d' },
   { base: '#d96f6d', light: '#f5a09d', shade: '#a74748', lower: '#8e6763' },
@@ -19,7 +19,6 @@ const esc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<'
 function defs(people) {
   return `<defs>
     <radialGradient id="backdrop"><stop stop-color="#fffaf0"/><stop offset="1" stop-color="#ffe7cb"/></radialGradient>
-    <filter id="shadow" x="-40%" y="-50%" width="180%" height="200%"><feGaussianBlur stdDeviation="13"/></filter>
     ${people.map((person, i) => {
       const t = TONES[person.tone], o = OUTFITS[i];
       return `<radialGradient id="skin${i}" cx="30%" cy="19%" r="85%"><stop stop-color="${t.light}"/><stop offset=".58" stop-color="${t.base}"/><stop offset="1" stop-color="${t.shade}"/></radialGradient>
@@ -29,7 +28,7 @@ function defs(people) {
   </defs>`;
 }
 function hairBack(p, i) {
-  if (p.gender === 'Woman') return `<path d="M-49-81 Q-51-132 0-133 Q53-132 48-82 L52 12 Q39 20 29 10 L22-84 Z" fill="url(#hair${i})" stroke="#39281f" stroke-width="2"/>`;
+  if (p.gender === 'Woman') return `<path d="M-48-80 C-53-124-25-137 0-135 C34-138 53-113 49-78 L44-36 Q40-23 27-25 L23-55 L-24-55 L-28-25 Q-42-22-45-37Z" fill="url(#hair${i})" stroke="#39281f" stroke-width="2"/>`;
   if (p.gender === 'Person') return `<path d="M-49-77 Q-56-126-5-133 Q44-135 50-84 L44-30 Q26-13 15-36 L19-88Z" fill="url(#hair${i})" stroke="#39281f" stroke-width="2"/>`;
   return '';
 }
@@ -51,104 +50,96 @@ function head(p, i) {
     <ellipse cx="-29" cy="-50" rx="8" ry="4" fill="#e47872" opacity=".16"/><ellipse cx="29" cy="-50" rx="8" ry="4" fill="#e47872" opacity=".16"/>
     ${hairFront(p, i)}</g>`;
 }
-function lowerBody(p, i) {
-  const o = OUTFITS[i];
-  const lower = p.gender === 'Woman'
-    ? `<path d="M-34 80 L-46 154 Q0 165 46 154 L34 80Z" fill="${o.lower}" stroke="#3a4d65" stroke-width="1.5"/>`
-    : `<path d="M-32 80 L-35 156 L-4 156 L0 105 L4 156 L35 156 L32 80Z" fill="${o.lower}" stroke="#59616b" stroke-width="1.5"/>`;
-  return `<g>${lower}
-    <path d="M-34 151 L-32 214 Q-31 225-24 225 L-10 225 Q-6 219-10 211 L-12 153 M12 153 L10 211 Q6 220 11 225 L26 225 Q32 224 33 214 L34 151" fill="url(#skin${i})" stroke="${TONES[p.tone].shade}" stroke-width="2"/>
-    <ellipse cx="-20" cy="224" rx="19" ry="8" fill="#513e38"/><ellipse cx="20" cy="224" rx="19" ry="8" fill="#513e38"/></g>`;
-}
+// Pose coordinates are shared by the browser, exports, and server previews.
+// Far arms are occluded by the embrace. Only hands with a visible wrist are
+// exposed; showing every limb would make a close group hug anatomically wrong.
+const PAIR_ARMS = [
+  { person: 1, path: 'M29-4 C20-16 7-12 0 0 L-21 18 C-28 24-37 21-51 11 L-61 25 C-35 47-17 44-4 34 L35 11 Q40 1 29-4Z', hand: [-59, 19, 40] },
+  { person: 0, path: 'M-67 0 C-78-3-85 7-78 23 C-63 50-38 79-16 87 C1 95 25 79 43 69 L61 57 L52 40 C24 55 4 66-7 64 C-19 60-44 23-54 8 Q-61 0-67 0Z', hand: [59, 47, -25] },
+];
+const SCENES = {
+  1: {
+    scale: 1.7, y: 307,
+    people: [{ x: 0, y: 13, turn: 0, headX: 0, headY: 13, tilt: 7 }],
+    arms: [
+      { person: 0, path: 'M-42 13 C-54 11-61 23-56 41 L-44 73 C-38 85-23 83-12 76 L33 43 L24 25 L-25 57 L-30 32 C-30 22-30 14-42 13Z', hand: [29, 33, -40] },
+      { person: 0, path: 'M40 15 C54 15 62 28 57 47 L47 86 C44 100 28 102 16 94 L-36 58 L-26 41 L28 76 L31 43 C33 25 28 18 40 15Z', hand: [-31, 49, -145] },
+    ],
+  },
+  2: {
+    scale: 1.6, y: 310,
+    people: [
+      { x: -42, y: 3, turn: 8, headX: -42, headY: 3, tilt: 12 },
+      { x: 42, y: 12, turn: -8, headX: 40, headY: 12, tilt: -12 },
+    ],
+    arms: PAIR_ARMS,
+  },
+  3: {
+    scale: 1.43, y: 292,
+    people: [
+      { x: -69, y: 0, turn: 12, headX: -76, headY: 0, tilt: 10 },
+      { x: 0, y: 40, turn: 0, headX: 0, headY: 40, tilt: 0 },
+      { x: 69, y: 4, turn: -12, headX: 76, headY: 4, tilt: -10 },
+    ],
+    headOrder: [0, 2, 1],
+    bodyOrder: [0, 2, 1],
+    arms: [
+      { person: 0, path: 'M-92-2 C-106-7-116 3-110 21 C-97 49-82 82-64 100 C-51 113-32 112-16 106 L32 89 L25 69 L-24 86 Q-40 92-48 83 C-65 64-80 25-81 10 Q-83 1-92-2Z', hand: [31, 77, -20] },
+      { person: 2, path: 'M93 1 C108-4 118 7 111 25 L88 77 Q80 95 63 93 C39 90 7 75-30 64 L-24 45 L64 69 L78 15 Q82 4 93 1Z', hand: [-29, 54, -160] },
+    ],
+  },
+  4: {
+    scale: 1.17, y: 236,
+    people: [
+      { x: -52, y: -6, turn: 11, headX: -59, headY: -6, tilt: 8 },
+      { x: 52, y: -8, turn: -11, headX: 59, headY: -8, tilt: -8 },
+      { x: -42, y: 109, turn: 8, headX: -42, headY: 109, tilt: 12 },
+      { x: 42, y: 118, turn: -8, headX: 40, headY: 118, tilt: -12 },
+    ],
+    arms: [
+      { person: 0, path: 'M-75-8 C-91-10-101 2-103 19 L-116 86 Q-119 104-106 117 L-69 144 L-57 128 L-91 99 Q-98 94-94 81 L-81 22 Q-67 3-75-8Z', hand: [-61, 136, 22] },
+      { person: 1, path: 'M77-10 C92-13 104 0 105 20 L118 84 Q121 103 105 115 L65 139 L55 121 L91 97 Q99 92 95 79 L82 20 Q66 0 77-10Z', hand: [58, 130, 155] },
+      ...PAIR_ARMS.map(arm => ({ ...arm, person: arm.person + 2, y: 106 })),
+    ],
+  },
+};
+
 function torso(p, i) {
   const o = OUTFITS[i];
   return `<g>
-    <path d="M-13-32 L-13-12 Q0 0 13-12 L13-32Z" fill="url(#skin${i})"/>
-    <path d="M-18-16 Q0-8 18-16 L36-15 Q48 12 39 81 Q0 90-39 81 Q-48 12-36-15Z" fill="url(#shirt${i})" stroke="${o.shade}" stroke-width="2.2"/>
-    <path d="M-19-15 Q0 4 19-15" fill="none" stroke="${o.shade}" stroke-width="3"/>
-    <path d="M-30 17 Q-29 51-34 77" fill="none" stroke="#fff" stroke-width="4" opacity=".16" stroke-linecap="round"/>
-    <path d="M-35 80 Q0 87 35 80" fill="none" stroke="${o.shade}" stroke-width="3" opacity=".55"/></g>`;
+    <path d="M-12-39 L-13-13 Q0-3 13-13 L12-39Z" fill="url(#skin${i})"/>
+    <path d="M-19-22 Q-8-12 12-23 C35-18 45 8 43 42 L39 106 Q4 125-38 109 L-43 49 C-48 12-42-13-19-22Z" fill="url(#shirt${i})" stroke="${o.shade}" stroke-width="1.5"/>
+    <path d="M-14-22 Q-1-8 15-23" fill="none" stroke="${o.light}" stroke-width="3"/>
+    <path d="M-32 9 Q-39 53-29 96" fill="none" stroke="#fff" opacity=".14" stroke-width="4" stroke-linecap="round"/>
+  </g>`;
 }
-// Arms use the same shoulder transform as the torso. Each person has exactly
-// two: the outside figures hold a neighbour in front and behind; the middle
-// figures put one arm around each neighbour's shoulders.
-function joint(pose, x, y) {
-  const angle = pose.lean * Math.PI / 180;
-  return [pose.x + x * Math.cos(angle) - (y - 80) * Math.sin(angle),
-    80 + x * Math.sin(angle) + (y - 80) * Math.cos(angle)];
-}
-const xy = point => point.map(value => Number(value.toFixed(2))).join(' ');
 function arm(p, i, path) {
-  return `<g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="${path}" stroke="${TONES[p.tone].shade}" stroke-width="21" opacity=".35"/>
-    <path d="${path}" stroke="url(#skin${i})" stroke-width="18"/>
-  </g>`;
+  return `<path d="${path}" fill="url(#skin${i})" stroke="${TONES[p.tone].shade}" stroke-width="1.2"/>`;
 }
-function hand(p, i, position, angle) {
-  return `<g transform="translate(${xy(position)}) rotate(${angle})">
-    <path d="M-10-5 Q-6-9-1-7 L7-5 Q12-3 10 2 Q9 6 4 7 L-5 6 Q-10 4-10-1Z" fill="url(#skin${i})" stroke="${TONES[p.tone].shade}" stroke-width="1"/>
-    <path d="M3-3 L7-1 M2 1 L6 3" fill="none" stroke="${TONES[p.tone].shade}" stroke-width="1" stroke-linecap="round" opacity=".5"/>
+function hand(p, i, [x, y, angle]) {
+  return `<g transform="translate(${x} ${y}) rotate(${angle})">
+    <path d="M-12-6 Q-10-11-4-10 L3-8 L11-4 Q15-2 13 1 Q12 3 9 2 L4 0 L12 4 Q15 6 12 9 Q10 10 7 8 L2 5 L9 10 Q11 12 8 14 Q6 15 3 12 L-3 8 L2 12 Q3 14 0 14 L-8 8 Q-15 4-12-6Z" fill="url(#skin${i})" stroke="${TONES[p.tone].shade}" stroke-width="1.1"/>
+    <path d="M-8-6 Q-4-13 0-10 L5-5" fill="none" stroke="${TONES[p.tone].shade}" opacity=".5" stroke-width="1"/>
   </g>`;
-}
-function hugArms(people, poses) {
-  const back = [], front = [], shoulderHands = [];
-  const count = people.length;
-  people.forEach((p, i) => {
-    const pose = poses[i];
-    if (count === 1) {
-      // Offset the two forearms so the wrists stay legible at emoji size.
-      [-1, 1].forEach(side => {
-        const start = joint(pose, side * 36, 4);
-        const elbow = joint(pose, side * 27, side < 0 ? 58 : 71);
-        const wrist = joint(pose, -side * 31, side < 0 ? 18 : 33);
-        const bend = joint(pose, side * 46, 41);
-        const path = `M${xy(start)} Q${xy(bend)} ${xy(elbow)} Q${xy(joint(pose, -side * 3, 49))} ${xy(wrist)}`;
-        front.push(arm(p, i, path) + hand(p, i, wrist, side < 0 ? -35 : -145));
-      });
-      return;
-    }
-    [-1, 1].forEach(side => {
-      const neighbour = poses[i + side];
-      const start = joint(pose, side * 36, 3);
-      if (neighbour) {
-        const wrist = joint(neighbour, side * 40, 5);
-        const bend = [(start[0] + wrist[0]) / 2, Math.min(start[1], wrist[1]) - 26];
-        back.push(arm(p, i, `M${xy(start)} Q${xy(bend)} ${xy(wrist)}`));
-        shoulderHands.push(hand(p, i, wrist, side > 0 ? 70 : 110));
-      } else {
-        const partner = poses[i - side];
-        const elbow = joint(pose, side * 5, side < 0 ? 55 : 70);
-        const bend = joint(pose, side * 27, 37);
-        const wrist = joint(partner, side * 33, side < 0 ? 27 : 48);
-        const path = `M${xy(start)} Q${xy(bend)} ${xy(elbow)} Q${xy([(elbow[0] + wrist[0]) / 2, elbow[1] + 2])} ${xy(wrist)}`;
-        const angle = Math.atan2(wrist[1] - elbow[1], wrist[0] - elbow[0]) * 180 / Math.PI;
-        front.push(arm(p, i, path) + hand(p, i, wrist, angle));
-      }
-    });
-  });
-  return { back: back.join(''), front: front.join(''), shoulderHands: shoulderHands.join('') };
 }
 export function createHugSvg(people, { transparent = false } = {}) {
   const count = people.length;
-  const gap = count === 4 ? 100 : 96;
-  const scale = count === 4 ? .88 : count === 3 ? .96 : 1.1;
-  const poses = people.map((_, i) => ({
-    x: (i - (count - 1) / 2) * gap,
-    lean: count === 1 ? 0 : 3 * (1 - 2 * i / (count - 1)),
-  }));
-  const upper = pose => `translate(${pose.x} 0) rotate(${pose.lean} 0 80)`;
-  const arms = hugArms(people, poses);
+  const scene = SCENES[count];
+  const order = people.map((_, i) => i);
+  const headTransform = pose => `translate(${pose.headX} ${pose.headY}) rotate(${pose.tilt} 0 -35) scale(.94 1)`;
   const label = count === 1 ? 'One person giving themselves a hug' : `${count} people hugging`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="900" height="560" viewBox="0 0 900 560" role="img" aria-label="${esc(label)}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560" role="img" aria-label="${esc(label)}">
     <title>${esc(label)}</title>${defs(people)}
     ${transparent ? '' : '<rect width="900" height="560" rx="30" fill="url(#backdrop)"/>'}
-    <ellipse cx="450" cy="503" rx="${(gap * (count - 1) / 2 + 48) * scale}" ry="12" fill="#896647" opacity=".18" filter="url(#shadow)"/>
-    <g transform="translate(450 ${500 - 232 * scale}) scale(${scale})">
-      ${arms.back}
-      ${people.map((p, i) => `<g transform="translate(${poses[i].x} 0)">${lowerBody(p, i)}</g>`).join('')}
-      ${people.map((p, i) => `<g transform="${upper(poses[i])}">${hairBack(p, i)}${torso(p, i)}</g>`).join('')}
-      ${arms.front}${arms.shoulderHands}
-      ${people.map((p, i) => `<g transform="${upper(poses[i])}"><g transform="rotate(${count === 1 ? 5 : poses[i].lean} 0 -40)">${head(p, i)}</g></g>`).join('')}
+    <g transform="translate(450 ${scene.y}) scale(${scene.scale})">
+      ${(scene.bodyOrder || order).map(i => `<g transform="${headTransform(scene.people[i])}">${hairBack(people[i], i)}</g>`).join('')}
+      ${(scene.bodyOrder || order).map(i => {
+        const pose = scene.people[i];
+        return `<g transform="translate(${pose.x} ${pose.y}) skewX(${pose.turn}) scale(.83 1)">${torso(people[i], i)}</g>`;
+      }).join('')}
+      ${scene.arms.map(limb => `<g transform="translate(0 ${limb.y || 0})">${arm(people[limb.person], limb.person, limb.path)}</g>`).join('')}
+      ${scene.arms.map(limb => `<g transform="translate(0 ${limb.y || 0})">${hand(people[limb.person], limb.person, limb.hand)}</g>`).join('')}
+      ${(scene.headOrder || order).map(i => `<g transform="${headTransform(scene.people[i])}">${head(people[i], i)}</g>`).join('')}
     </g>
   </svg>`;
 }

@@ -17,7 +17,7 @@ The editor and exports run in the browser. A compact configuration is stored in 
 
 ## Illustration changes
 
-`frontend/src/illustration.js` supplies the editor, SVG/PNG exports, server-rendered page, and social card. Each figure has two arms, with shoulders and hands positioned from the same torso pose. Self hugs cross the chest; outer group members hold a neighbour in front and behind, and middle members put an arm around each neighbour's shoulders. Check all four group sizes, all presentations and skin tones, and small emoji-size output when changing the geometry.
+`frontend/src/illustration.js` supplies the editor, SVG/PNG exports, server-rendered page, and social card. The illustrations use a close, chest-up composition with dedicated poses for one through four people. Self hugs hold the upper arms; pairs embrace at the shoulder and back; groups gather around one another with staggered heads. Arms have tapered silhouettes and connected wrists, and the embrace naturally hides far arms. Hair and faces share a transform so tilting a head cannot detach its hair. Check every group size, mixed and matching skin tones, all presentations, and small emoji-size output when changing the geometry.
 
 Increment `ILLUSTRATION_VERSION` when the artwork changes. The preview service uses it for both the Open Graph image URL and ETag, so earlier images can be refreshed. Deploy the frontend and preview service from the same source revision.
 
