@@ -1,4 +1,5 @@
 FROM node:24-alpine
+LABEL org.opencontainers.image.source="https://github.com/p2ppsr/hugging-eomjis-suck"
 RUN apk add --no-cache font-dejavu
 WORKDIR /app
 COPY backend/package.json backend/package-lock.json ./backend/
