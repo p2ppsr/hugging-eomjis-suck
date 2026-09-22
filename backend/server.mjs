@@ -108,7 +108,7 @@ export function createServer() {
         draining = true;
         response.writeHead(200, responseHeaders({ 'content-type': 'text/plain', 'cache-control': 'no-store' })).end('draining'); return;
       }
-      if (draining) {
+      if (draining && url.pathname === '/healthz') {
         response.writeHead(503, responseHeaders({ 'cache-control': 'no-store' })).end('draining'); return;
       }
       if (!['GET', 'HEAD'].includes(request.method)) {

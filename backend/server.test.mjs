@@ -71,3 +71,17 @@ test('compresses HTML when accepted and respects gzip opt out', async () => {
   assert.match(plain.body.toString(), /A self hug, made just right/);
   assert.ok(zipped.body.length < plain.body.length / 2);
 });
+
+test('withdraws readiness while still serving routed page and image requests', async () => {
+  const drainingServer = createServer();
+  await new Promise(resolve => drainingServer.listen(0, '127.0.0.1', resolve));
+  const drainingBase = `http://127.0.0.1:${drainingServer.address().port}`;
+  try {
+    assert.equal((await fetch(`${drainingBase}/drain`)).status, 200);
+    assert.equal((await fetch(`${drainingBase}/healthz`)).status, 503);
+    assert.equal((await fetch(`${drainingBase}/?n=1&p1=25`)).status, 200);
+    assert.equal((await fetch(`${drainingBase}/og.png?n=1&p1=25`)).status, 200);
+  } finally {
+    await new Promise(resolve => drainingServer.close(resolve));
+  }
+});
